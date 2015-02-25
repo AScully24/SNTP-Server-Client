@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-#define WEBROOT "/home/netlab/heinz/html" /*base dir for html/txt files */
+#define WEBROOT "/home/scully/Documents/Year_2/CNaOS/CNaOS-Assignment-2" /*base dir for html/txt files */
 #define HTTP_PORT 8000
 int create_tcp_endpoint(int port); /* prototype for fn to open socket */
 
