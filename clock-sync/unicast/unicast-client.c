@@ -39,9 +39,23 @@ struct msgFormat {
     unsigned char messageDigestPart2[4];
 };
 
+/* Returns an NTP timestamp. TRY TO IMPROVE THIS.*/
 unsigned long long tv_to_ntp(struct timeval tv) {
     unsigned long long tv_ntp, tv_usecs;
 
+    tv_ntp = tv.tv_sec + EPOCH;
+    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
+
+    return (tv_ntp << 32) | tv_usecs;
+}
+
+/* Returns an NTP timestamp. TRY TO IMPROVE THIS.*/
+struct timeval ntp_to_tv(unsigned long long ntp) {
+    unsigned long tv_ntp, tv_usecs;
+    tv_usecs = ntp & 0xFFFF;
+    tv_ntp = (ntp >> 32) & 0xFFFF;
+    
+    
     tv_ntp = tv.tv_sec + EPOCH;
     tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
 
@@ -107,7 +121,7 @@ int main(int argc, char * argv[]) {
 
     printf("Sent %d bytes to %s\n", numbytes, inet_ntoa(their_addr.sin_addr));
 
-    /* THIS WILL BE FOR WHEN THE SERVER SENDS INFO BACK.*/
+    /* Server sends back its reply. */
     char recvBuffer[9999];
     socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
     numbytes = 0;
@@ -117,12 +131,36 @@ int main(int argc, char * argv[]) {
         perror("Listener recvfrom");
         exit(1);
     }
+ 
+    
+    /* TESTING REPLIES TO SERVER */
+//    struct msgFormat *servReply = recvBuffer;
+//    
+//    
+//    // LI
+//    servReply->flags = 0;
+//    servReply->flags = servReply->flags << 3;
+//    // VN
+//    servReply->flags += 4;
+//    servReply->flags = servReply->flags << 3;
+//    // Mode
+//    servReply->flags += 3;
+//    
+//    
+//    if ((numbytes = sendto(sockfd, servReply, sizeof (struct msgFormat), 0, (struct sockaddr *) &their_addr, sizeof (struct sockaddr)))
+//            == -1) {
+//        perror("Server sendto error");
+//        exit(1);
+//    }
+    
 
     if (numbytes > 0) {
         printf("Received from server %d bytes from %s\n", numbytes,
                 inet_ntoa(their_addr.sin_addr));
     }
-
+    
+    
+    
     close(sockfd);
 
     return 0;
