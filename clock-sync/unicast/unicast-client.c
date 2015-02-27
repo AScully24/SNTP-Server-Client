@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 #include <netdb.h> /* for gethostbyname() */
 #include <sys/time.h> /* gettimeofday */
-#include <time.h> /* clock_gettime */
+//#include <time.h> /* clock_gettime */
 
 #define SERVER_PORT 123 /* server port the client connects to */
 #define LISTENPORT 59765 /* server port the client recieves on */
@@ -39,27 +39,33 @@ struct msgFormat {
     unsigned char messageDigestPart2[4];
 };
 
-/* Returns an NTP timestamp. TRY TO IMPROVE THIS.*/
+/* Returns an NTP timestamp. a = (b * x) / c TRY TO IMPROVE THIS.*/
 unsigned long long tv_to_ntp(struct timeval tv) {
     unsigned long long tv_ntp, tv_usecs;
 
     tv_ntp = tv.tv_sec + EPOCH;
+         //a           b               x           c
     tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
 
     return (tv_ntp << 32) | tv_usecs;
 }
 
-/* Returns an NTP timestamp. TRY TO IMPROVE THIS.*/
+/* Returns an timvalue struct from an NTP timestamp. x = a * c / b TRY TO IMPROVE THIS.*/
 struct timeval ntp_to_tv(unsigned long long ntp) {
-    unsigned long tv_ntp, tv_usecs;
-    tv_usecs = ntp & 0xFFFF;
-    tv_ntp = (ntp >> 32) & 0xFFFF;
+    unsigned long long tv_secs, tv_usecs;
+    tv_usecs = ntp & 0xFFFFFFFF;
+    tv_secs = (ntp >> 32) & 0xFFFFFFFF;
     
+    struct timeval temp;
     
-    tv_ntp = tv.tv_sec + EPOCH;
-    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
-
-    return (tv_ntp << 32) | tv_usecs;
+    tv_secs = tv_secs - EPOCH;
+           //         a        c           b
+    tv_usecs = (tv_usecs+1) * 1000000UL / NTP_SCALE_FRAC;
+            //    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
+    
+    temp.tv_sec = (time_t)tv_secs;
+    temp.tv_usec = (suseconds_t)tv_usecs;
+    return temp;
 }
 
 int main(int argc, char * argv[]) {
@@ -90,7 +96,7 @@ int main(int argc, char * argv[]) {
     }
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-        perror("Talker s1ocket");
+        perror("Talker socket");
         exit(1);
     }
 
@@ -99,10 +105,14 @@ int main(int argc, char * argv[]) {
     their_addr.sin_family = AF_INET; /* host byte order .. */
     their_addr.sin_port = htons(SERVER_PORT); /* .. short, netwk byte order */
     their_addr.sin_addr = *((struct in_addr *) he->h_addr);
-
+    
     gettimeofday(&myTime, NULL);
+    printf("Before after: sec %d  usec %d\n",(int)myTime.tv_sec, (int)myTime.tv_usec);
     unsigned long long ntpTime = tv_to_ntp(myTime);
-
+    
+    struct timeval testTime = ntp_to_tv(ntpTime);
+    printf("Before after: sec %d  usec %d\n",(int)testTime.tv_sec, (int)testTime.tv_usec);
+    
     //ntp_to_char_arr(&msg->originateTimestamp, ntpTime);
 
     int i;
@@ -113,12 +123,12 @@ int main(int argc, char * argv[]) {
         ntpTime = ntpTime >> 8;
     }
 
-    if ((numbytes = sendto(sockfd, msg, sizeof (struct msgFormat), 0, (struct sockaddr *) &their_addr, sizeof (struct sockaddr)))
-            == -1) {
+    if ((numbytes = sendto(sockfd, msg, sizeof (struct msgFormat), 0,
+            (struct sockaddr *) &their_addr, sizeof (struct sockaddr))) == -1) {
         perror("Server sendto error");
         exit(1);
     }
-
+    
     printf("Sent %d bytes to %s\n", numbytes, inet_ntoa(their_addr.sin_addr));
 
     /* Server sends back its reply. */
@@ -131,36 +141,34 @@ int main(int argc, char * argv[]) {
         perror("Listener recvfrom");
         exit(1);
     }
- 
-    
+
+
     /* TESTING REPLIES TO SERVER */
-//    struct msgFormat *servReply = recvBuffer;
-//    
-//    
-//    // LI
-//    servReply->flags = 0;
-//    servReply->flags = servReply->flags << 3;
-//    // VN
-//    servReply->flags += 4;
-//    servReply->flags = servReply->flags << 3;
-//    // Mode
-//    servReply->flags += 3;
-//    
-//    
-//    if ((numbytes = sendto(sockfd, servReply, sizeof (struct msgFormat), 0, (struct sockaddr *) &their_addr, sizeof (struct sockaddr)))
-//            == -1) {
-//        perror("Server sendto error");
-//        exit(1);
-//    }
-    
+    //    struct msgFormat *servReply = recvBuffer;
+    //    
+    //    
+    //    // LI
+    //    servReply->flags = 0;
+    //    servReply->flags = servReply->flags << 3;
+    //    // VN
+    //    servReply->flags += 4;
+    //    servReply->flags = servReply->flags << 3;
+    //    // Mode
+    //    servReply->flags += 3;
+    //    
+    //    
+    //    if ((numbytes = sendto(sockfd, servReply, sizeof (struct msgFormat), 0, (struct sockaddr *) &their_addr, sizeof (struct sockaddr)))
+    //            == -1) {
+    //        perror("Server sendto error");
+    //        exit(1);
+    //    }
+
 
     if (numbytes > 0) {
         printf("Received from server %d bytes from %s\n", numbytes,
                 inet_ntoa(their_addr.sin_addr));
     }
-    
-    
-    
+
     close(sockfd);
 
     return 0;
