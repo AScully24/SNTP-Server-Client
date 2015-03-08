@@ -1,4 +1,4 @@
-/* client - Used to communicate with the server for clock sync.
+/* Server - Waits for a client to send a message, then sends back an updated time.
  * 
  * 
  */
@@ -14,36 +14,37 @@
 #include <netdb.h> /* for gethostbyname() */
 #include <sys/time.h> /* gettimeofday */
 #include <time.h> /* clock_gettime */
+#include <endian.h>
 
 #define SERVER_PORT 123 /* server port the client connects to */
-#define LISTENPORT 59765 /* server port the client recieves on */
+#define LISTEN_PORT 1234 /* The port the server listens on. */
+#define POLL_TIME   10 /* Number of seconds to wait until sending to the server again */
 
 /* These are used to create a timestamp in the correct format (1st January 1900) */
 const unsigned long long EPOCH = 2208988800ULL;
 const unsigned long long NTP_SCALE_FRAC = 4294967295ULL;
 
 struct msgFormat {
-    unsigned char flags;
-    unsigned char stratum;
-    unsigned char poll;
-    unsigned char precision;
-    unsigned char rootDelay[4];
-    unsigned char rootDispersion[4];
-    unsigned char refIdentifier[4];
-    unsigned char refTimestamp[8];
-    unsigned char originateTimestamp[8];
-    unsigned char revcTimestamp[8];
-    unsigned char transmitTimestamp[8];
-    unsigned char keyIdentifier[4];
-    unsigned char messageDigest[8];
+    u_int8_t flags;
+    u_int8_t stratum;
+    u_int8_t poll;
+    u_int8_t precision;
+    uint32_t rootDelay;
+    uint32_t rootDispersion;
+    uint32_t refIdentifier;
+    uint64_t refTimestamp;
+    uint64_t originateTimestamp;
+    uint64_t revcTimestamp;
+    uint64_t transmitTimestamp;
+    //uint32_t keyIdentifier;
+    //uint64_t messageDigest;
 };
 
 /* Returns an NTP timestamp. a = (b * x) / c TRY TO IMPROVE THIS.*/
-unsigned long long tv_to_ntp(struct timeval tv) {
+uint64_t tv_to_ntp(struct timeval tv) {
     unsigned long long tv_ntp, tv_usecs;
 
     tv_ntp = tv.tv_sec + EPOCH;
-    //a           b               x           c
     tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
 
     return (tv_ntp << 32) | tv_usecs;
@@ -67,6 +68,7 @@ struct timeval ntp_to_tv(unsigned long long ntp) {
     return temp;
 }
 
+/* Prints a timeval in a human readable format */
 void print_tv(struct timeval tv) {
     time_t nowtime;
     struct tm *nowtm;
@@ -79,26 +81,47 @@ void print_tv(struct timeval tv) {
     printf("%s", buf);
 }
 
+void initialiseMsgFormat(struct msgFormat *msg) {
+    msg->flags = 0;
+    msg->stratum = 0;
+    msg->poll = 0;
+    msg->precision = 0;
+    msg->rootDelay = 0;
+    msg->rootDispersion = 0;
+    msg->refIdentifier = 0;
+    msg->refTimestamp = 0;
+    msg->originateTimestamp = 0;
+    msg->revcTimestamp = 0;
+    msg->transmitTimestamp = 0;
+    //msg->keyIdentifier = 0;
+    //msg->messageDigest = 0;
+
+}
+
+void reverseMsgFormat(struct msgFormat * msg) {
+    msg->rootDelay = htobe32(msg->rootDelay);
+    msg->rootDispersion = htobe32(msg->rootDispersion);
+    msg->refIdentifier = htobe32(msg->refIdentifier);
+    msg->refTimestamp = htobe64(msg->refTimestamp);
+    msg->originateTimestamp = htobe64(msg->originateTimestamp);
+    msg->revcTimestamp = htobe64(msg->revcTimestamp);
+    msg->transmitTimestamp = htobe64(msg->transmitTimestamp);
+}
+
 int main(int argc, char * argv[]) {
 
-    int sockfd, numbytes;
+    int sockfd, sendSockfd, numbytes;
     struct hostent *he;
-    struct sockaddr_in their_addr; /* server address info */
-    struct msgFormat *msg;
+    struct sockaddr_in their_addr, listen_addr; /* server address info */
+    struct msgFormat msg;
     struct timeval myTime;
-
-    msg = (struct msgFormat*) malloc(sizeof (struct msgFormat));
-
-    // LI
-    msg->flags = 0;
-    msg->flags = msg->flags << 3;
-    // VN
-    msg->flags += 4;
-    msg->flags = msg->flags << 3;
-    // Mode
-    msg->flags += 3;
-
     char serverIP[] = "time-a.nist.gov";
+    //char serverIP[] = "10.167.158.236";
+    struct msgFormat recvBuffer;
+    socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
+
+    initialiseMsgFormat(&msg);
+    initialiseMsgFormat(&recvBuffer);
 
     /* resolve server host name or IP address */
     if ((he = gethostbyname(serverIP)) == NULL) {
@@ -106,32 +129,43 @@ int main(int argc, char * argv[]) {
         exit(1);
     }
 
+    /* Setup the listen socket */
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-        perror("Talker socket");
+        perror("Listen socket");
         exit(1);
     }
 
-    // Server details
+    /* Setup the send socket */
+    if ((sendSockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+        perror("Listen socket");
+        exit(1);
+    }
+
     memset(&their_addr, 0, sizeof (their_addr)); /* zero struct */
-    their_addr.sin_family = AF_INET; /* host byte order .. */
-    their_addr.sin_port = htons(SERVER_PORT); /* .. short, netwk byte order */
-    their_addr.sin_addr = *((struct in_addr *) he->h_addr);
+    memset(&listen_addr, 0, sizeof (listen_addr));
+    /* Listen port*/
+    listen_addr.sin_family = AF_INET; /* host byte order .. */
+    listen_addr.sin_port = htons(LISTEN_PORT); /* .. short, netwk byte order */
+    listen_addr.sin_addr.s_addr = INADDR_ANY;
 
-    //ntp_to_char_arr(&msg->originateTimestamp, ntpTime);
-    //    struct timezone myTimeZone;
-    //    gettimeofday(&myTime, &myTimeZone);
-    printf("Waiting for client: ")
+    if (bind(sockfd, (struct sockaddr *) &listen_addr, sizeof (struct sockaddr)) == -1) {
+        perror("Listener bind");
+        exit(1);
+    }
+
+    /* Server details */
+    //    their_addr.sin_family = AF_INET; /* host byte order .. */
+    //    their_addr.sin_port = htons(SERVER_PORT); /* .. short, netwk byte order */
+    //    their_addr.sin_addr = *((struct in_addr *) he->h_addr);
+
     while (1) {
-
         /* 
          * 
          * 
-         * Server waits for client. */
-        char recvBuffer[64];
-        socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
+         * Server sends back its reply. */
         numbytes = 0;
-        if ((numbytes = recvfrom(sockfd, recvBuffer, sizeof (recvBuffer) - 1, 0,
-                (struct sockaddr *) &their_addr, &addr_len)) == -1) {
+        if ((numbytes = recvfrom(sockfd, (struct msgFormat *) &recvBuffer, sizeof (struct msgFormat), 0,
+                (struct sockaddr *) &listen_addr, &addr_len)) == -1) {
             perror("Listener recvfrom");
             exit(1);
         }
@@ -139,86 +173,51 @@ int main(int argc, char * argv[]) {
         /* 
          * 
          * 
-         * Server recieves a message from client.. */
-        if (numbytes > 0) {
-            /* 
-             * 
-             * 
-             * Sets up the initial information so the server knows I am a client*/
-            // LI
-            msg->flags = 0;
-            msg->flags = msg->flags << 3;
-            // VN
-            msg->flags += 4;
-            msg->flags = msg->flags << 3;
-            // Mode
-            msg->flags += 4;
-            
-            
-            /* 
-             * 
-             * 
-             * Gets the current system time and converts it into a 64bit timestamp. */
-            gettimeofday(&myTime, NULL);
-            unsigned long long ntpTime = tv_to_ntp(myTime);
+         * Input the receive time of a message. */
+        gettimeofday(&myTime, NULL);
+        uint64_t recieveTime = tv_to_ntp(myTime);
+        reverseMsgFormat(&recvBuffer);
+        msg = recvBuffer;
+        msg.revcTimestamp = recieveTime;
+        
+        /* 
+         * 
+         * 
+         * Sets up the initial information so the server knows I am a client*/
+        // LI
+        msg.flags = 0;
+        msg.flags <<= 3;
+        // VN
+        msg.flags |= 4;
+        msg.flags <<= 3;
+        // Mode
+        msg.flags |= 4;
 
-            printf("Time Before: ");
-            print_tv(myTime);
-            printf("\n");
-            int i;
-            for (i = 7; i > -1; i--) {
-                msg->originateTimestamp[i] = ntpTime & 0xFF;
-                msg->transmitTimestamp[i] = ntpTime & 0xFF;
-                ntpTime = ntpTime >> 8;
-            }
+        msg.stratum = 2;
+        msg.precision = 0;
+        msg.rootDelay = 0;
+        msg.rootDispersion = 0;
+        
+        /* 
+         * 
+         * 
+         * Gets the current system time and converts it into a 64bit timestamp. */
+        gettimeofday(&myTime, NULL);
+        msg.transmitTimestamp = tv_to_ntp(myTime);
+        reverseMsgFormat(&msg);
 
-            /*
-             * 
-             * 
-             *  Sends the data to the server. */
-            if ((numbytes = sendto(sockfd, msg, sizeof (struct msgFormat), 0,
-                    (struct sockaddr *) &their_addr, sizeof (struct sockaddr))) == -1) {
-                perror("Server sendto error");
-                exit(1);
-            }
-            //printf("Sent %d bytes to %s\t", numbytes, inet_ntoa(their_addr.sin_addr));
-
-            //printf("Receive %d bytes to %s\n", numbytes, inet_ntoa(their_addr.sin_addr));
-
-
-            /* 
-             * 
-             * 
-             * Analyse the server data and set the new system time. */
-            msg = recvBuffer;
-
-            ntpTime = 0x00;
-            i = 0;
-            for (i = 0; i < 8; i++) {
-                //        for (i = 7; i > -1; i--) {
-                //unsigned char revcTimestamp[8];
-                ntpTime = ntpTime << 8;
-                ntpTime = ntpTime | msg->transmitTimestamp[i];
-            }
-
-            myTime = ntp_to_tv(ntpTime);
-            printf("Time After: ");
-            print_tv(myTime);
-            printf("\n");
-            //printf("Time After: %d \t %d\n", (int) myTime.tv_sec, (int) myTime.tv_usec);
-            int timeError = 0;
-            if ((timeError = settimeofday(&myTime, NULL)) == -1) {
-                perror("Set Time ");
-                exit(1);
-            }
+        /*
+         * 
+         * 
+         *  Sends the data to the server. */
+        if ((numbytes = sendto(sendSockfd, (struct msgFormat *) &msg, sizeof (struct msgFormat), 0,
+                (struct sockaddr *) &listen_addr, sizeof (struct sockaddr))) == -1) {
+            perror("Server sendto error");
+            exit(1);
         }
-
-
-
-        sleep(1);
     }
-
     close(sockfd);
+    close(sendSockfd);
 
     return 0;
 }

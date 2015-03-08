@@ -98,6 +98,16 @@ void initialiseMsgFormat(struct msgFormat *msg) {
 
 }
 
+void reverseMsgFormat(struct msgFormat * msg) {
+    msg->rootDelay = htobe32(msg->rootDelay);
+    msg->rootDispersion = htobe32(msg->rootDispersion);
+    msg->refIdentifier = htobe32(msg->refIdentifier);
+    msg->refTimestamp = htobe64(msg->refTimestamp);
+    msg->originateTimestamp = htobe64(msg->originateTimestamp);
+    msg->revcTimestamp = htobe64(msg->revcTimestamp);
+    msg->transmitTimestamp = htobe64(msg->transmitTimestamp);
+}
+
 int main(int argc, char * argv[]) {
 
     int sockfd, numbytes;
@@ -106,7 +116,7 @@ int main(int argc, char * argv[]) {
     struct msgFormat msg;
     struct timeval myTime;
     char serverIP[] = "time-a.nist.gov";
-    //char serverIP[] = "10.167.158.236";
+    //char serverIP[] = "127.0.0.1";
     struct msgFormat recvBuffer;
     socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
 
@@ -144,20 +154,20 @@ int main(int argc, char * argv[]) {
     msg.flags <<= 3;
     // Mode
     msg.flags |= 3;
+    
     /* 
      * 
      * 
      * Gets the current system time and converts it into a 64bit timestamp. */
     gettimeofday(&myTime, NULL);
-    uint64_t ntpTime = tv_to_ntp(myTime);
-
-    //msg.transmitTimestamp = msg.originateTimestamp = htobe64(ntpTime);
-
-
+    msg.originateTimestamp = tv_to_ntp(myTime);
+    
     printf("Time Before: ");
     print_tv(myTime);
     printf("\t");
-
+    
+    reverseMsgFormat(&msg);
+    
     /*
      * 
      * 
@@ -173,20 +183,19 @@ int main(int argc, char * argv[]) {
      * 
      * 
      * Server sends back its reply. */
-        numbytes = 0;
-        if ((numbytes = recvfrom(sockfd, (struct msgFormat *) &recvBuffer, sizeof (struct msgFormat), 0,
-                (struct sockaddr *) &their_addr, &addr_len)) == -1) {
-            perror("Listener recvfrom");
-            exit(1);
-        }
+    numbytes = 0;
+    if ((numbytes = recvfrom(sockfd, (struct msgFormat *) &recvBuffer, sizeof (struct msgFormat), 0,
+            (struct sockaddr *) &their_addr, &addr_len)) == -1) {
+        perror("Listener recvfrom");
+        exit(1);
+    }
 
     /* 
      * 
      * 
      * Analyse the server data and set the new system time. */
-
-    ntpTime = htobe64(recvBuffer.transmitTimestamp);
-    myTime = ntp_to_tv(ntpTime);
+    //ntpTime = htobe64(recvBuffer.transmitTimestamp);
+    myTime = ntp_to_tv(htobe64(recvBuffer.transmitTimestamp));
     printf("Time After: ");
     print_tv(myTime);
     printf("\n");
