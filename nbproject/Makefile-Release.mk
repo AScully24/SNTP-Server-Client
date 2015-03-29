@@ -37,6 +37,7 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 OBJECTFILES= \
 	${OBJECTDIR}/manycast-client.o \
 	${OBJECTDIR}/manycast-server.o \
+	${OBJECTDIR}/ntp_time_conversion.o \
 	${OBJECTDIR}/unicast-client.o \
 	${OBJECTDIR}/unicast-server.o
 
@@ -74,6 +75,11 @@ ${OBJECTDIR}/manycast-server.o: manycast-server.c
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/manycast-server.o manycast-server.c
+
+${OBJECTDIR}/ntp_time_conversion.o: ntp_time_conversion.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/ntp_time_conversion.o ntp_time_conversion.c
 
 ${OBJECTDIR}/unicast-client.o: unicast-client.c 
 	${MKDIR} -p ${OBJECTDIR}

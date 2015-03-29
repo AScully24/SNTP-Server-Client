@@ -3,110 +3,22 @@
  * 
  */
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#//include <stdlib.h>
+//#include <unistd.h>
 #include <errno.h>
-#include <string.h>
+//#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h> /* for gethostbyname() */
+//#include <netinet/in.h>
+//#include <arpa/inet.h>
+//#include <netdb.h> /* for gethostbyname() */
 #include <sys/time.h> /* gettimeofday */
-#include <time.h> /* clock_gettime */
-#include <endian.h>
+//#include <time.h> /* clock_gettime */
+//#include <endian.h> /* For converting to various endians */
+#include "ntp_time_conversion.h" /* Custom made header file for converting types.*/
 
 #define SERVER_PORT 123 /* server port the client connects to */
 #define POLL_TIME   5//10 /* Number of seconds to wait until sending to the server again */
-#define arrSize 5
-
-/* These are used to create a timestamp in the correct format (1st January 1900) */
-const unsigned long long EPOCH = 2208988800ULL;
-const unsigned long long NTP_SCALE_FRAC = 4294967295ULL;
-
-struct msgFormat {
-    u_int8_t flags;
-    u_int8_t stratum;
-    u_int8_t poll;
-    u_int8_t precision;
-    uint32_t rootDelay;
-    uint32_t rootDispersion;
-    uint32_t refIdentifier;
-    uint64_t refTimestamp;
-    uint64_t originateTimestamp;
-    uint64_t revcTimestamp;
-    uint64_t transmitTimestamp;
-    //uint32_t keyIdentifier;
-    //uint64_t messageDigest;
-};
-
-/* Returns an NTP timestamp. a = (b * x) / c TRY TO IMPROVE THIS.*/
-uint64_t tv_to_ntp(struct timeval tv) {
-    unsigned long long tv_ntp, tv_usecs;
-
-    tv_ntp = tv.tv_sec + EPOCH;
-    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
-
-    return (tv_ntp << 32) | tv_usecs;
-}
-
-/* Returns an timvalue struct from an NTP timestamp. x = a * c / b TRY TO IMPROVE THIS.*/
-struct timeval ntp_to_tv(unsigned long long ntp) {
-    unsigned long long tv_secs, tv_usecs;
-    tv_usecs = ntp & 0xFFFFFFFF;
-    tv_secs = (ntp >> 32) & 0xFFFFFFFF;
-
-    struct timeval temp;
-
-    tv_secs = tv_secs - EPOCH;
-    //         a        c           b
-    tv_usecs = (tv_usecs + 1) * 1000000UL / NTP_SCALE_FRAC;
-    //    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
-
-    temp.tv_sec = (time_t) tv_secs;
-    temp.tv_usec = (suseconds_t) tv_usecs;
-    return temp;
-}
-
-/* Prints a timeval in a human readable format */
-void print_tv(struct timeval tv) {
-    time_t nowtime;
-    struct tm *nowtm;
-    char tmbuf[64], buf[64];
-
-    nowtime = tv.tv_sec;
-    nowtm = localtime(&nowtime);
-    strftime(tmbuf, sizeof tmbuf, "%Y-%m-%d %H:%M:%S", nowtm);
-    snprintf(buf, sizeof buf, "%s.%06d", tmbuf, (int) tv.tv_usec);
-    printf("%s", buf);
-}
-
-void initialiseMsgFormat(struct msgFormat *msg) {
-    msg->flags = 0;
-    msg->stratum = 0;
-    msg->poll = 0;
-    msg->precision = 0;
-    msg->rootDelay = 0;
-    msg->rootDispersion = 0;
-    msg->refIdentifier = 0;
-    msg->refTimestamp = 0;
-    msg->originateTimestamp = 0;
-    msg->revcTimestamp = 0;
-    msg->transmitTimestamp = 0;
-    //msg->keyIdentifier = 0;
-    //msg->messageDigest = 0;
-
-}
-
-void reverseMsgFormat(struct msgFormat * msg) {
-    msg->rootDelay = htobe32(msg->rootDelay);
-    msg->rootDispersion = htobe32(msg->rootDispersion);
-    msg->refIdentifier = htobe32(msg->refIdentifier);
-    msg->refTimestamp = htobe64(msg->refTimestamp);
-    msg->originateTimestamp = htobe64(msg->originateTimestamp);
-    msg->revcTimestamp = htobe64(msg->revcTimestamp);
-    msg->transmitTimestamp = htobe64(msg->transmitTimestamp);
-}
 
 int main(int argc, char * argv[]) {
 
@@ -123,17 +35,22 @@ int main(int argc, char * argv[]) {
     initialiseMsgFormat(&msg);
     initialiseMsgFormat(&recvBuffer);
 
+    printf("Resolving server IP: ");
     /* resolve server host name or IP address */
     if ((he = gethostbyname(serverIP)) == NULL) {
         perror("Server gethostbyname");
         exit(1);
     }
+    printf("OK\n");
 
+    printf("Setting up socket Port %d: ", SERVER_PORT);
     /* Setup the socket */
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
         perror("Talker socket");
         exit(1);
     }
+    printf("OK\n");
+
 
     memset(&their_addr, 0, sizeof (their_addr)); /* zero struct */
     /* Server details */
@@ -146,6 +63,7 @@ int main(int argc, char * argv[]) {
      * 
      * 
      * Sets up the initial information so the server knows I am a client*/
+    printf("Initialising flags: ");
     // LI
     msg.flags = 0;
     msg.flags <<= 3;
@@ -154,7 +72,12 @@ int main(int argc, char * argv[]) {
     msg.flags <<= 3;
     // Mode
     msg.flags |= 3;
+    
+    //memset(&myTime,0,sizeof(myTime));
+    printf("OK\n");
 
+    
+    
     while (1) {
         /* 
          * 
