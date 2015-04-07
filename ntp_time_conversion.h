@@ -10,7 +10,7 @@
 #ifndef NTP_TIME_CONVERSION_H
 #define	NTP_TIME_CONVERSION_H
 
-struct msgFormat {
+struct sntpMsgFormat {
     u_int8_t flags;
     u_int8_t stratum;
     u_int8_t poll;
@@ -29,8 +29,8 @@ struct msgFormat {
 uint64_t tv_to_ntp(struct timeval);
 struct timeval ntp_to_tv(unsigned long long);
 void print_tv(struct timeval);
-void initialiseMsgFormat(struct msgFormat*);
-void reverseMsgFormat(struct msgFormat*);
+void initialiseMsgFormat(struct sntpMsgFormat*);
+void reverseMsgFormat(struct sntpMsgFormat*);
 
 #ifdef	__cplusplus
 extern "C" {

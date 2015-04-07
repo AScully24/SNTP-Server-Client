@@ -31,7 +31,7 @@ DEFAULTCONF=Debug
 CONF=${DEFAULTCONF}
 
 # All Configurations
-ALLCONFS=Debug Release u-client u-server 
+ALLCONFS=Debug Release u-client u-server m-client 
 
 
 # build

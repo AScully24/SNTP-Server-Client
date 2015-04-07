@@ -23,7 +23,7 @@ AS=as
 # Macros
 CND_PLATFORM=GNU-Linux-x86
 CND_DLIB_EXT=so
-CND_CONF=u-client
+CND_CONF=m-client
 CND_DISTDIR=dist
 CND_BUILDDIR=build
 
@@ -36,9 +36,9 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 # Object Files
 OBJECTFILES= \
 	${OBJECTDIR}/client.o \
+	${OBJECTDIR}/manycast-client.o \
 	${OBJECTDIR}/ntp_time_conversion.o \
-	${OBJECTDIR}/server.o \
-	${OBJECTDIR}/unicast-client.o
+	${OBJECTDIR}/server.o
 
 
 # C Compiler Flags
@@ -70,6 +70,11 @@ ${OBJECTDIR}/client.o: client.c
 	${RM} "$@.d"
 	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/client.o client.c
 
+${OBJECTDIR}/manycast-client.o: manycast-client.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/manycast-client.o manycast-client.c
+
 ${OBJECTDIR}/ntp_time_conversion.o: ntp_time_conversion.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
@@ -79,11 +84,6 @@ ${OBJECTDIR}/server.o: server.c
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/server.o server.c
-
-${OBJECTDIR}/unicast-client.o: unicast-client.c 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/unicast-client.o unicast-client.c
 
 # Subprojects
 .build-subprojects:

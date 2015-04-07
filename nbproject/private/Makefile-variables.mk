@@ -7,3 +7,4 @@
 # Release configuration
 # u-client configuration
 # u-server configuration
+# m-client configuration

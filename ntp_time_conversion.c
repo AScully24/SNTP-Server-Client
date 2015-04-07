@@ -1,5 +1,8 @@
-#include "ntp_time_conversion.h"
 #include <time.h>
+#include <stdio.h>
+#include "ntp_time_conversion.h"
+
+
 /* These are used to create a timestamp in the correct format (1st January 1900) */
 const unsigned long long EPOCH = 2208988800ULL;
 const unsigned long long NTP_SCALE_FRAC = 4294967295ULL;
@@ -47,7 +50,7 @@ void print_tv(struct timeval tv) {
     printf("%s", buf);
 }
 
-void initialiseMsgFormat(struct msgFormat *msg) {
+void initialiseMsgFormat(struct sntpMsgFormat *msg) {
     msg->flags = 0;
     msg->stratum = 0;
     msg->poll = 0;
@@ -63,7 +66,7 @@ void initialiseMsgFormat(struct msgFormat *msg) {
     //msg->messageDigest = 0;
 }
 
-void reverseMsgFormat(struct msgFormat * msg) {
+void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->rootDelay = htobe32(msg->rootDelay);
     msg->rootDispersion = htobe32(msg->rootDispersion);
     msg->refIdentifier = htobe32(msg->refIdentifier);

@@ -38,6 +38,14 @@ CND_ARTIFACT_PATH_u-server=dist/u-server/GNU-Linux-x86/cnaos
 CND_PACKAGE_DIR_u-server=dist/u-server/GNU-Linux-x86/package
 CND_PACKAGE_NAME_u-server=cnaos.tar
 CND_PACKAGE_PATH_u-server=dist/u-server/GNU-Linux-x86/package/cnaos.tar
+# m-client configuration
+CND_PLATFORM_m-client=GNU-Linux-x86
+CND_ARTIFACT_DIR_m-client=dist/m-client/GNU-Linux-x86
+CND_ARTIFACT_NAME_m-client=cnaos
+CND_ARTIFACT_PATH_m-client=dist/m-client/GNU-Linux-x86/cnaos
+CND_PACKAGE_DIR_m-client=dist/m-client/GNU-Linux-x86/package
+CND_PACKAGE_NAME_m-client=cnaos.tar
+CND_PACKAGE_PATH_m-client=dist/m-client/GNU-Linux-x86/package/cnaos.tar
 #
 # include compiler specific variables
 #
