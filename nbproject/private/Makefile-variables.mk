@@ -8,3 +8,4 @@
 # u-client configuration
 # u-server configuration
 # m-client configuration
+# m-server configuration

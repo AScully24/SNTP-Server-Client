@@ -9,6 +9,7 @@
 #define	CLIENT_H
 
 void clientHandler(int , struct sockaddr_in);
+void sendClientMessage(int, struct sockaddr_in);
 
 #endif	/* CLIENT_H */
 
