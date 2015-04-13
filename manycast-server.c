@@ -149,7 +149,9 @@ int main(int argc, char * argv[]) {
         if (numbytes == sizeof (struct sntpMsgFormat)) { /* Only accepts packets that are size 48 */
             printf("Recieved from existing client...");
             reverseMsgFormat(&recvBuffer);
-
+            printMsgDetails(recvBuffer);
+            
+            
             /* Checks that all the data received is a valid reply*/
             int modeCheck = recvBuffer.flags & CLIENT_MODE;
             int clientVersion = (recvBuffer.flags >> 3) & 0x07;
