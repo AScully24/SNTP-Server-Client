@@ -1,19 +1,16 @@
-/* client - Used to communicate with the server for clock sync. */
+/* client - Used o communicate with the server for clock sync. */
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h> /* gettimeofday */
-
+#include <math.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/select.h>
 
 #include "ntp_time_conversion.h" /* Custom made header file for converting types.*/
-
-
-
 
 #define POLL_TIME   15 /* Number of seconds to wait until sending to the server again */
 #define SERVER_MODE	4 /* The Mode value that the server should have */
@@ -28,8 +25,8 @@ int main(int argc, char * argv[]) {
     struct sockaddr_in their_addr; /* server address info */
     struct sntpMsgFormat msg, recvBuffer;
     struct timeval myTime;
-    //    char serverIP[] = "time-a.nist.gov";
-    char serverIP[] = "239.0.0.1";
+    char serverIP[] = "time-a.nist.gov";
+    //    char serverIP[] = "239.0.0.1";
     socklen_t addr_len = (socklen_t) sizeof (struct sockaddr);
 
     /* Argument handler */
@@ -126,14 +123,14 @@ int main(int argc, char * argv[]) {
 
         initialiseMsgFormat(&recvBuffer);
         numbytes = 0;
-        
+
         /* Wait for a reply from the server. */
         if ((numbytes = recvfrom(sockfd, (struct sntpMsgFormat *) &recvBuffer,
                 sizeof (struct sntpMsgFormat), 0, (struct sockaddr *) &their_addr,
                 &addr_len)) == -1) {
 
             if (errno == EAGAIN) {
-                //printf("Busy. Will try again later... ");
+                /* Ignores */
             } else {
                 perror("Manycast Client recvfrom Error");
                 exit(1);
@@ -142,10 +139,10 @@ int main(int argc, char * argv[]) {
         gettimeofday(&myTime, NULL); /* Time data was received from server. */
         printf("Finished listening... ");
 
-
         if (numbytes == sizeof (struct sntpMsgFormat)) { /* Only accepts packets that are size 48 */
             printf("Processing Packet... ");
             reverseMsgFormat(&recvBuffer);
+            printMsgDetails(recvBuffer);
             reverseMsgFormat(&msg);
 
             /* Checks that all the data received is a valid reply*/
@@ -156,7 +153,7 @@ int main(int argc, char * argv[]) {
             if (modeCheck != SERVER_MODE) printf("Message not from a valid server (Mode is not %d).\n", SERVER_MODE);
             else if (myVersion != serverVersion) printf("Version sent in packet does not match server version.\n");
             else if (recvBuffer.stratum > 15) printf("Server stratum too high.\n");
-            else if (recvBuffer.stratum == 0) printf("Kiss o' death message recieved. Better stop me soon..\n");
+            else if (recvBuffer.stratum == 0) printf("Kiss o' death message received. Better stop me soon..\n");
             else if (msg.transmitTimestamp != recvBuffer.originateTimestamp) printf("Server Originate does not match Client Transmit.\n");
             else if (manycast == 0 && their_addr.sin_addr.s_addr != serverAddr) printf("Message not from selected server. Message ignored.\n");
             else { /* Valid server reply */
@@ -168,7 +165,6 @@ int main(int argc, char * argv[]) {
         } else printf("No Data received. Will attempt again in %d seconds.\n", POLL_TIME);
 
         sleep(POLL_TIME);
-
     }
 
     close(sockfd);
@@ -189,6 +185,8 @@ void setMessageClient(struct sntpMsgFormat* msg) {
     msg->flags <<= 3;
 
     msg->flags |= 3; /* Mode. Client = 3, Server = 4 */
-    //msg->keyIdentifier = 1;
+    
+    msg->poll = log2(POLL_TIME);
+    
     msg->transmitTimestamp = tv_to_ntp(myTime); //msg->originateTimestamp = tv_to_ntp(myTime);
 }

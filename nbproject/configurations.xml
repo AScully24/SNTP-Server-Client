@@ -170,9 +170,12 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <compileType>
+        <linkerTool>
+          <linkerLibItems>
+            <linkerLibStdlibItem>Mathematics</linkerLibStdlibItem>
+          </linkerLibItems>
+        </linkerTool>
       </compileType>
-      <item path="client.c" ex="false" tool="0" flavor2="0">
-      </item>
       <item path="client.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="manycast-client.c" ex="false" tool="0" flavor2="0">
@@ -180,8 +183,6 @@
       <item path="ntp_time_conversion.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="ntp_time_conversion.h" ex="false" tool="3" flavor2="0">
-      </item>
-      <item path="server.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="server.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -194,7 +195,7 @@
       </toolsSet>
       <compileType>
       </compileType>
-      <item path="client.c" ex="false" tool="0" flavor2="9">
+      <item path="client.c" ex="true" tool="0" flavor2="9">
       </item>
       <item path="client.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -206,7 +207,7 @@
       </item>
       <item path="ntp_time_conversion.h" ex="false" tool="3" flavor2="0">
       </item>
-      <item path="server.c" ex="false" tool="0" flavor2="9">
+      <item path="server.c" ex="true" tool="0" flavor2="9">
       </item>
       <item path="server.h" ex="false" tool="3" flavor2="0">
       </item>

@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdio.h>
+#include <math.h>
 #include "ntp_time_conversion.h"
 
 /* These are used to create a timestamp in the correct format (1st January 1900 / 1st January 1970) */
@@ -27,7 +28,6 @@ struct timeval ntp_to_tv(unsigned long long ntp) {
     tv_secs = tv_secs - EPOCH;
     //         a        c           b
     tv_usecs = (tv_usecs + 1) * 1000000UL / NTP_SCALE_FRAC;
-    //    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
 
     temp.tv_sec = (time_t) tv_secs;
     temp.tv_usec = (suseconds_t) tv_usecs;
@@ -40,13 +40,12 @@ void print_tv(struct timeval tv) {
     struct tm *nowtm;
     char tmbuf[64], buf[64];
 
-    
     nowtime = tv.tv_sec;
     nowtm = localtime(&nowtime);
     strftime(tmbuf, sizeof (tmbuf), "%Y-%m-%d %H:%M:%S", nowtm);
-    
+
     snprintf(buf, sizeof buf, "%s.%06d", tmbuf, (int) tv.tv_usec);
-    printf("%s", buf);
+    printf("%s\n", buf);
 }
 
 /* Set all values of a struct sntpMsgFormat to 0. */
@@ -64,7 +63,7 @@ void initialiseMsgFormat(struct sntpMsgFormat *msg) {
     msg->transmitTimestamp = 0;
 }
 
-/* Converts data to Newtork Byte Order/Host Byte Order. */
+/* Converts data to Network Byte Order/Host Byte Order */
 void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->rootDelay = htobe32(msg->rootDelay);
     msg->rootDispersion = htobe32(msg->rootDispersion);
@@ -73,4 +72,43 @@ void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->originateTimestamp = htobe64(msg->originateTimestamp);
     msg->revcTimestamp = htobe64(msg->revcTimestamp);
     msg->transmitTimestamp = htobe64(msg->transmitTimestamp);
+}
+
+void printMsgDetails(struct sntpMsgFormat msg) {
+    int mode = msg.flags & 0x07;
+    int version = (msg.flags >> 3) & 0x07;
+
+    printf("Leap Indicator: %d\n", msg.flags >> 6);
+    printf("Mode: %d\n", mode);
+    printf("Version: %d\n", version);
+    printf("Stratum: %d\n", msg.stratum);
+    printf("Poll: %f\n", pow(2,msg.poll));
+    
+    printf("Precision: %f\n", pow(2,msg.precision));
+    printf("Root Delay: %d\n", msg.rootDelay);
+    printf("Root Dispersion: %d\n", msg.rootDispersion);
+
+    char refChar[5];
+
+    int i;
+    int32_t temp = msg.refIdentifier;
+    for (i = 3; i > -1; i--) {
+        refChar[i] = temp & 0xFF;
+        temp = temp >> 8;
+    }
+    
+    refChar[4] = '\0';
+    printf("Reference Identifier: %s\n", refChar);
+
+    printf("Reference Timestamp: ");
+    print_tv(ntp_to_tv(msg.refTimestamp));
+
+    printf("Originate Timestamp: ");
+    print_tv(ntp_to_tv(msg.originateTimestamp));
+
+    printf("Receive Timestamp: ");
+    print_tv(ntp_to_tv(msg.revcTimestamp));
+
+    printf("Transmit Timestamp: ");
+    print_tv(ntp_to_tv(msg.transmitTimestamp));
 }
