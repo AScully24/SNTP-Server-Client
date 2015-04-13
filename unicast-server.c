@@ -10,15 +10,16 @@
 
 #define LISTEN_PORT 1234 /* The port the server listens on. */
 
+
 int main(int argc, char * argv[]) {
 
-    int sockfd, numbytes;
+    int sockfd;//, numbytes;
     struct sockaddr_in listen_addr; /* server address info */
     struct sntpMsgFormat msg;
-    struct timeval myTime;
+//    struct timeval myTime;
     struct sntpMsgFormat recvBuffer;
-    socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
-    socklen_t msgFormatSize = (socklen_t) sizeof (struct sntpMsgFormat);
+//    socklen_t addr_len = (socklen_t)sizeof (struct sockaddr);
+//    socklen_t msgFormatSize = (socklen_t) sizeof (struct sntpMsgFormat);
 
     initialiseMsgFormat(&msg);
     initialiseMsgFormat(&recvBuffer);
@@ -52,3 +53,4 @@ int main(int argc, char * argv[]) {
 
     return 0;
 }
+

@@ -8,8 +8,8 @@
 #ifndef CLIENT_H
 #define	CLIENT_H
 
-void clientHandler(int , struct sockaddr_in);
-void sendClientMessage(int, struct sockaddr_in);
+void setMessageClient(struct sntpMsgFormat*);
+struct sntpMsgFormat sendClientMessage(int, struct sockaddr_in,struct sntpMsgFormat);
 
 #endif	/* CLIENT_H */
 

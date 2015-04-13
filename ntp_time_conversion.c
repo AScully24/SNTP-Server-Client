@@ -2,12 +2,11 @@
 #include <stdio.h>
 #include "ntp_time_conversion.h"
 
-
-/* These are used to create a timestamp in the correct format (1st January 1900) */
+/* These are used to create a timestamp in the correct format (1st January 1900 / 1st January 1970) */
 const unsigned long long EPOCH = 2208988800ULL;
 const unsigned long long NTP_SCALE_FRAC = 4294967295ULL;
 
-/* Returns an NTP timestamp. a = (b * x) / c TRY TO IMPROVE THIS.*/
+/* Converts a TimeVal struct to an NTP timestamp. a = (b * x) / c*/
 uint64_t tv_to_ntp(struct timeval tv) {
     unsigned long long tv_ntp, tv_usecs;
 
@@ -17,7 +16,7 @@ uint64_t tv_to_ntp(struct timeval tv) {
     return (tv_ntp << 32) | tv_usecs;
 }
 
-/* Returns an timvalue struct from an NTP timestamp. x = a * c / b TRY TO IMPROVE THIS.*/
+/*  Converts an NTP timestampto a TimeVal struct . x = a * c / b */
 struct timeval ntp_to_tv(unsigned long long ntp) {
     unsigned long long tv_secs, tv_usecs;
     tv_usecs = ntp & 0xFFFFFFFF;
@@ -50,6 +49,7 @@ void print_tv(struct timeval tv) {
     printf("%s", buf);
 }
 
+/* Set all values of a struct sntpMsgFormat to 0. */
 void initialiseMsgFormat(struct sntpMsgFormat *msg) {
     msg->flags = 0;
     msg->stratum = 0;
@@ -62,10 +62,9 @@ void initialiseMsgFormat(struct sntpMsgFormat *msg) {
     msg->originateTimestamp = 0;
     msg->revcTimestamp = 0;
     msg->transmitTimestamp = 0;
-    //msg->keyIdentifier = 0;
-    //msg->messageDigest = 0;
 }
 
+/* Converts data to Newtork Byte Order/Host Byte Order. */
 void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->rootDelay = htobe32(msg->rootDelay);
     msg->rootDispersion = htobe32(msg->rootDispersion);

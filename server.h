@@ -8,6 +8,7 @@
 #ifndef SERVER_H
 #define	SERVER_H
 
+void setServerMessage( struct sntpMsgFormat*);
 void serverHandler(int, struct sockaddr_in);
 
 #endif

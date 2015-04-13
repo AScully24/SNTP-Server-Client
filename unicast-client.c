@@ -16,8 +16,13 @@ int main(int argc, char * argv[]) {
     int sockfd;
     struct hostent *he;
     struct sockaddr_in their_addr; /* server address info */
-    //    char serverIP[] = "time-a.nist.gov";
-    char serverIP[] = "time-a.nist.gov";
+    char serverIP[] = "ntp.uwe.ac.uk";
+//    char serverIP[] = "164.11.80.32";
+//    char serverIP[] = "time-a.nist.gov";
+    struct sntpMsgFormat msg;
+
+    initialiseMsgFormat(&msg);
+
 
     printf("Argc: %d\n", argc);
     if (argc == 1) {
@@ -58,9 +63,10 @@ int main(int argc, char * argv[]) {
     their_addr.sin_port = htons(SERVER_PORT); /* .. short, netwk byte order */
     their_addr.sin_addr = *((struct in_addr *) he->h_addr);
     
+
     // Infinite loop until exit
     while (1) {
-        sendClientMessage(sockfd,their_addr);
+        msg = sendClientMessage(sockfd,their_addr,msg);
         sleep(POLL_TIME);
     }
     close(sockfd);

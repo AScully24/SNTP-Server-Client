@@ -22,8 +22,6 @@ struct sntpMsgFormat {
     uint64_t originateTimestamp;
     uint64_t revcTimestamp;
     uint64_t transmitTimestamp;
-    //uint32_t keyIdentifier;
-    //uint64_t messageDigest;
 };
 
 uint64_t tv_to_ntp(struct timeval);
@@ -35,8 +33,6 @@ void reverseMsgFormat(struct sntpMsgFormat*);
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
-
 
 
 #ifdef	__cplusplus
