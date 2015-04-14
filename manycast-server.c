@@ -16,6 +16,8 @@ void setServerMessage(struct sntpMsgFormat*, struct timeval);
 
 int main(int argc, char * argv[]) {
 
+    /* 
+     * Variable Declarations*/
     int sockfd;
     int numbytes = 0;
     struct ip_mreq mreq;
@@ -86,7 +88,7 @@ int main(int argc, char * argv[]) {
 
 
     /*
-     * Listen*/
+     * Listen Socket address*/
     printf("Setting Listen Socket address: ");
     memset(&group_addr, 0, sizeof (group_addr));
     group_addr.sin_family = AF_INET; /* host byte order .. */
@@ -122,7 +124,7 @@ int main(int argc, char * argv[]) {
 
         /*
          *  use setsockopt() to request to join a multicast group.
-         * Notifies the kernel that we are interested in that packet*/
+         * Notifies the kernel that we are interested in those packets*/
         printf("Joining the multicast group: ");
         mreq.imr_multiaddr.s_addr = inet_addr(argIP);
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
@@ -136,6 +138,7 @@ int main(int argc, char * argv[]) {
 
     while (1) { /* Main loop for listening and sending. */
 
+        /* Listening for messages.*/
         printf("Listening...");
         if ((numbytes = recvfrom(sockfd, (struct sntpMsgFormat *) &recvBuffer,
                 sizeof (struct sntpMsgFormat), 0, (struct sockaddr *) &group_addr, &addr_len)) == -1) {
@@ -145,27 +148,28 @@ int main(int argc, char * argv[]) {
         struct timeval myTime;
         gettimeofday(&myTime, NULL);
 
-
+        /* Packet validation. Esnures that only SNTP messages are processed. */
         if (numbytes == sizeof (struct sntpMsgFormat)) { /* Only accepts packets that are size 48 */
-            printf("Recieved from existing client...");
+            printf("Received from existing client...");
             reverseMsgFormat(&recvBuffer);
             printMsgDetails(recvBuffer);
-            
-            
+
+
             /* Checks that all the data received is a valid reply*/
             int modeCheck = recvBuffer.flags & CLIENT_MODE;
             int clientVersion = (recvBuffer.flags >> 3) & 0x07;
 
+            /* 
+             * Further packet checks. See print statements for details. */
             if (modeCheck != CLIENT_MODE) printf("Message not from a valid server (Mode is not %d).\n", CLIENT_MODE);
             else if (clientVersion > 4 || clientVersion < 1) printf("Client Version is not between 1 and 4.\n");
-                //else if (recvBuffer.stratum != 0) printf("Client Stratum is not 0.\n");
             else {
                 msg = recvBuffer;
                 setServerMessage(&msg, myTime);
                 reverseMsgFormat(&msg);
 
                 printf("Sending data to client\n");
-                /* Sends the data to the server. */
+                /* Sends the data to clients. */
                 if ((numbytes = sendto(sockfd, (struct sntpMsgFormat *) &msg, sizeof (struct sntpMsgFormat),
                         0, (struct sockaddr *) &group_addr, addr_len)) == -1) {
                     perror("Server sendto error");
@@ -180,16 +184,16 @@ int main(int argc, char * argv[]) {
 
 /* Sets the default values for the server message to the client. */
 void setServerMessage(struct sntpMsgFormat* msg, struct timeval myTime) {
-    /* Input the receive time of a message. */
+    /* Inputs the receive time of a message. */
     gettimeofday(&myTime, NULL);
 
     msg->revcTimestamp = tv_to_ntp(myTime);
-
-    /* Sets up the initial information so the server knows I am a server*/
-    msg->flags = 0; /* LI */
+    /* Shifting bits required for retrieving flags.
+     * Sets up the initial information so the server knows I am a server*/
+    msg->flags = 0; /* Leap Indicator */
     msg->flags <<= 3;
 
-    msg->flags |= 4; /* VN */
+    msg->flags |= 4; /* Version Number */
     msg->flags <<= 3;
 
     msg->flags |= 4; /* Mode. Client = 3, Server = 4 */
@@ -199,10 +203,17 @@ void setServerMessage(struct sntpMsgFormat* msg, struct timeval myTime) {
     msg->rootDelay = 0;
     msg->rootDispersion = 0;
     msg->originateTimestamp = msg->transmitTimestamp;
+
+    msg->poll = log2(POLL_TIME_PREF);
+
+    /* Sets the reference identifier to LOCL. */
+    char referenceChar[] = "LOCL";
+    int i;
+    for (i = 0; i < 4; i++) {
+        msg.refIdentifier = msg.refIdentifier << 8;
+        msg.refIdentifier referenceChar[i] = temp & 0xFF;
+    }
     
-    
-     msg->poll = log2(POLL_TIME_PREF);
-   
     /* Gets the current system time and converts it into a 64bit timestamp*/
     gettimeofday(&myTime, NULL);
     msg->transmitTimestamp = tv_to_ntp(myTime);

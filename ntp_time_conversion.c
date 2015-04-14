@@ -1,23 +1,25 @@
+/* Shared functions used by both the client and the server. */
+
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
 #include "ntp_time_conversion.h"
 
 /* These are used to create a timestamp in the correct format (1st January 1900 / 1st January 1970) */
-const unsigned long long EPOCH = 2208988800ULL;
-const unsigned long long NTP_SCALE_FRAC = 4294967295ULL;
+const unsigned long long SECONDS_OFFSET = 2208988800ULL;
+const unsigned long long N_SECONDS_OFFSET = 4294967295ULL;
 
-/* Converts a TimeVal struct to an NTP timestamp. a = (b * x) / c*/
+/* Converts a TimeVal struct to an NTP timestamp. */
 uint64_t tv_to_ntp(struct timeval tv) {
     unsigned long long tv_ntp, tv_usecs;
 
-    tv_ntp = tv.tv_sec + EPOCH;
-    tv_usecs = (NTP_SCALE_FRAC * tv.tv_usec) / 1000000UL;
+    tv_ntp = tv.tv_sec + SECONDS_OFFSET;
+    tv_usecs = (N_SECONDS_OFFSET * tv.tv_usec) / 1000000UL;
 
     return (tv_ntp << 32) | tv_usecs;
 }
 
-/*  Converts an NTP timestampto a TimeVal struct . x = a * c / b */
+/* Converts an NTP timestamp to a TimeVal struct. */
 struct timeval ntp_to_tv(unsigned long long ntp) {
     unsigned long long tv_secs, tv_usecs;
     tv_usecs = ntp & 0xFFFFFFFF;
@@ -25,9 +27,9 @@ struct timeval ntp_to_tv(unsigned long long ntp) {
 
     struct timeval temp;
 
-    tv_secs = tv_secs - EPOCH;
+    tv_secs = tv_secs - SECONDS_OFFSET;
     //         a        c           b
-    tv_usecs = (tv_usecs + 1) * 1000000UL / NTP_SCALE_FRAC;
+    tv_usecs = (tv_usecs + 1) * 1000000UL / N_SECONDS_OFFSET;
 
     temp.tv_sec = (time_t) tv_secs;
     temp.tv_usec = (suseconds_t) tv_usecs;
@@ -63,7 +65,7 @@ void initialiseMsgFormat(struct sntpMsgFormat *msg) {
     msg->transmitTimestamp = 0;
 }
 
-/* Converts data to Network Byte Order/Host Byte Order */
+/* Converts data from/to Network Byte Order/Host Byte Order */
 void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->rootDelay = htobe32(msg->rootDelay);
     msg->rootDispersion = htobe32(msg->rootDispersion);
@@ -74,10 +76,12 @@ void reverseMsgFormat(struct sntpMsgFormat * msg) {
     msg->transmitTimestamp = htobe64(msg->transmitTimestamp);
 }
 
+/* Print an SNTP message in a human readable format. */
 void printMsgDetails(struct sntpMsgFormat msg) {
     int mode = msg.flags & 0x07;
     int version = (msg.flags >> 3) & 0x07;
 
+    /* Shifting bits required for retrieving flags. */
     printf("Leap Indicator: %d\n", msg.flags >> 6);
     printf("Mode: %d\n", mode);
     printf("Version: %d\n", version);
@@ -87,9 +91,9 @@ void printMsgDetails(struct sntpMsgFormat msg) {
     printf("Precision: %f\n", pow(2,msg.precision));
     printf("Root Delay: %d\n", msg.rootDelay);
     printf("Root Dispersion: %d\n", msg.rootDispersion);
-
+    
+    /* Extracts a reference identifier into a char array. */
     char refChar[5];
-
     int i;
     int32_t temp = msg.refIdentifier;
     for (i = 3; i > -1; i--) {
@@ -98,7 +102,7 @@ void printMsgDetails(struct sntpMsgFormat msg) {
     }
     
     refChar[4] = '\0';
-    printf("Reference Identifier: %s\n", refChar);
+    printf("Reference Identifier: %s\n", refChar); /* IP addresses not yet supported. */
 
     printf("Reference Timestamp: ");
     print_tv(ntp_to_tv(msg.refTimestamp));

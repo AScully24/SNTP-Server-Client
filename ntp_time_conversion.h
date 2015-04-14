@@ -10,6 +10,7 @@
 #ifndef NTP_TIME_CONVERSION_H
 #define	NTP_TIME_CONVERSION_H
 
+/* Message structure for SNTP. 48 Bytes in size*/
 struct sntpMsgFormat {
     u_int8_t flags;
     u_int8_t stratum;
